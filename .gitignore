@@ -1,0 +1,8 @@
+*.obj
+*.pdb
+*.ilk
+*.user
+__pycache__/
+.superpowers/
+build/
+delivery/

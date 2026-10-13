@@ -1,84 +1,49 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
-
-#include <QByteArray>
-#include <QHash>
+#pragma once
+#include "chatserver.h"
+#include "directcall.h"
 #include <QMainWindow>
-#include <QTcpServer>
-#include <QTcpSocket>
-
-class QComboBox;
-class QLabel;
-class QLineEdit;
-class QListWidget;
-class QPushButton;
-class QJsonObject;
-class QJsonArray;
-class QTextBrowser;
-
-class MainWindow : public QMainWindow
-{
+#include <QPointer>
+#include <QJsonArray>
+class QComboBox; class QLineEdit; class QPushButton; class QLabel;
+class QTextBrowser; class QListWidget; class QDialog; class QMessageBox;
+class MainWindow : public QMainWindow {
     Q_OBJECT
-
 public:
     explicit MainWindow(QWidget *parent = nullptr);
-    ~MainWindow() override = default;
-
-private slots:
-    void onRoleChanged(int index);
-    void onStartStopClicked();
-    void onSendClicked();
-    void onChooseFileClicked();
-
+    ~MainWindow() override;
+    void configure(bool server, const QString &host, quint16 port, const QString &nickname, bool start);
+    void setDownloadDirectory(const QString &path) { downloads_ = path; }
+    void sendFile(const QString &path);
 private:
-    struct Peer {
-        QByteArray buffer;
-        QString nickname;
-    };
-
-    static constexpr quint32 MaxFrameBytes = 10 * 1024 * 1024;
-    static constexpr qint64 MaxFileBytes = 5 * 1024 * 1024;
-
-    QTcpServer *server_ = nullptr;
-    QTcpSocket *client_ = nullptr;
-    QHash<QTcpSocket *, Peer> peers_;
-    QByteArray clientBuffer_;
-    bool running_ = false;
-
-    QComboBox *roleCombo_ = nullptr;
-    QLineEdit *nicknameEdit_ = nullptr;
-    QLineEdit *hostEdit_ = nullptr;
-    QLineEdit *portEdit_ = nullptr;
-    QPushButton *actionButton_ = nullptr;
-    QLabel *statusLabel_ = nullptr;
-    QTextBrowser *chatView_ = nullptr;
-    QListWidget *userList_ = nullptr;
-    QLineEdit *messageEdit_ = nullptr;
-    QPushButton *sendButton_ = nullptr;
-    QPushButton *fileButton_ = nullptr;
-
-    void buildUi();
-    void setRunningUi(bool running, const QString &status);
+    enum class State { Idle, Connecting, LoggingIn, Online, Serving };
+    State state_ = State::Idle;
+    ChatServer server_;
+    DirectCall direct_;
+    QPointer<QTcpSocket> client_;
+    QByteArray buffer_;
+    QString nickname_, callId_, callPeer_, downloads_, pendingGroup_;
+    bool incoming_ = false;
+    QJsonArray groups_;
+    QComboBox *role_, *group_;
+    QLineEdit *nicknameEdit_, *host_, *port_, *message_;
+    QPushButton *action_, *send_, *file_, *create_, *join_, *callButton_, *cancelCall_;
+    QLabel *status_, *members_;
+    QTextBrowser *log_;
+    QListWidget *users_;
+    QPointer<QMessageBox> incomingDialog_;
+    QPointer<QDialog> callDialog_;
+    QTextBrowser *callLog_ = nullptr;
+    void updateUi();
     void appendLog(const QString &text);
-    void startServer();
-    void stopServer();
-    void connectToServer();
-    void disconnectFromServer();
-    void acceptPendingConnections();
-    void readServerSocket(QTcpSocket *socket);
-    void readClientSocket();
-    void processServerMessage(QTcpSocket *socket, const QJsonObject &message);
-    void processClientMessage(const QJsonObject &message);
-    void handleFrame(QTcpSocket *socket, QByteArray &buffer, bool serverSide);
-    void sendFrame(QTcpSocket *socket, const QJsonObject &message);
-    void sendClientMessage(const QJsonObject &message);
-    void broadcast(const QJsonObject &message);
-    void broadcastSystem(const QString &text);
-    void sendUserList();
-    void refreshUserList(const QJsonArray &users);
-    void handlePeerDisconnected(QTcpSocket *socket);
-    void sendTextMessage();
-    void saveIncomingFile(const QJsonObject &message);
+    void startStop();
+    void resetConnection(const QString &reason);
+    void send(const QJsonObject &message);
+    void readClient();
+    void process(const QJsonObject &message);
+    void refreshGroups();
+    void sendText();
+    void receiveFile(const QJsonObject &message);
+    void beginCall();
+    void finishCall(const QString &reason, bool notify = true);
+    void showCallWindow();
 };
-
-#endif // MAINWINDOW_H

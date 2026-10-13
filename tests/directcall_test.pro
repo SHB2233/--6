@@ -1,0 +1,10 @@
+QT += core network testlib
+QT -= gui
+CONFIG += console testcase c++17 no_moc_predefs
+CONFIG -= app_bundle
+TEMPLATE = app
+TARGET = directcall_test
+INCLUDEPATH += ..
+SOURCES += directcall_test.cpp ../directcall.cpp
+HEADERS += ../directcall.h
+win32:QMAKE_CXXFLAGS += /utf-8
